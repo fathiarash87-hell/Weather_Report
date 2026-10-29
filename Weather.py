@@ -8,8 +8,8 @@ cities = {
     "Shiraz": (29.59, 52.58),
     "Isfahan": (32.65, 51.67),
 }
-frames = []
-for city, (lat, lon) in cities.items():
+
+def get_forecast(city, lat, lon):
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -17,12 +17,10 @@ for city, (lat, lon) in cities.items():
         "timezone": "Asia/Tehran",
         "forecast_days": 7,
     }
-
     response = requests.get(url, params=params, timeout=10)
     response.raise_for_status()
-    data = response.json()
+    daily = response.json()["daily"]
 
-    daily = data["daily"]
     df = pd.DataFrame({
         "Date": daily["time"],
         "Max": daily["temperature_2m_max"],
@@ -30,8 +28,20 @@ for city, (lat, lon) in cities.items():
         "Rain": daily["precipitation_sum"],
     })
     df["City"] = city
-    frames.append(df)
+    return df
 
+frames = []
+
+for city, (lat, lon) in cities.items():
+    try:
+        frames.append(get_forecast(city, lat, lon))
+        print(city, "OK")
+    except requests.exceptions.RequestException as e:
+        print(city, "خطا:", e)
+
+if not frames:
+    print("هیچ داده‌ای گرفته نشد، برنامه متوقف شد")
+    raise SystemExit
 
 all_data = pd.concat(frames, ignore_index=True)
 print(all_data)
